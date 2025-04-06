@@ -1,0 +1,69 @@
+---
+title: "Assignment 5"
+output: html_document
+date: "2025-04-06"
+---
+
+```{r setup, include=FALSE}
+library(forecast)
+library(tseries)
+library(fpp2)
+library(ggplot2)
+library(readr)
+```
+
+```{r}
+baggage_complaints <- read_csv("/Users/muskangupta/Downloads/baggagecomplaints.csv")
+
+# Convert to time series object (assumed monthly, starting from Jan 2004)
+complaints_ts <- ts(baggage_complaints$Baggage, start = c(2004, 1), frequency = 12)
+
+# Plot time series
+plot(complaints_ts, main = "Baggage Complaints Over Time", ylab = "Number of Complaints", xlab = "Year")
+```
+
+```{r}
+ndiffs(complaints_ts)  # Check how many differences are needed
+tsdisplay(complaints_ts)  # Original series display
+
+# First differencing (if needed)
+complaints_diff <- diff(complaints_ts, differences = 1)
+tsdisplay(complaints_diff)
+```
+
+```{r}
+auto_fit <- auto.arima(complaints_ts, trace = TRUE, stepwise = FALSE)
+auto_fit
+summary(auto_fit)
+```
+
+***Observation***: 
+
+The ARIMA model chosen was ARIMA(0,1,1)(1,0,2)[12]. This means the data was adjusted once to remove any trend and make it stable. The model includes one short-term (non-seasonal) moving average term and no short-term autoregressive terms. It also includes one yearly (seasonal) autoregressive term and two yearly moving average terms, which helps it capture repeating patterns every 12 months. All parts of the model were found to be important, showing that the model fits the data well.
+
+
+```{r}
+
+checkresiduals(auto_fit)
+
+# Individual residual checks
+Acf(auto_fit$residuals)
+Box.test(residuals(auto_fit), lag = 20, type = "Ljung")
+plot.ts(residuals(auto_fit), main = "Residuals of ARIMA Model")
+hist(auto_fit$residuals, main = "Histogram of Residuals")
+tsdiag(auto_fit)
+
+
+```
+
+
+```{r}
+forecasted_values <- forecast(auto_fit, h = 5, level = c(95))
+autoplot(forecasted_values) + ggtitle("5-Month Forecast of Baggage Complaints") + ylab("Complaints")
+```
+
+```{r}
+
+accuracy(auto_fit)
+
+```
